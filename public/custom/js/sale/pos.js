@@ -794,6 +794,7 @@
                 rowFinalTotal += taxAmount;
             }
         $("input[name='total["+rowId+"]'").val(_parseFix(rowFinalTotal));
+        calculateFinalGrandTotal();
     }
 
     /**
@@ -892,6 +893,10 @@
         if(operation == 'update' || operation == 'convert'){
             updateOperation(itemsTableRecords);
         }
+
+        $(document).on('keyup change', '#tot_discount_amt, #tot_discount_type, input[name="round_off"]', function() {
+    calculateFinalGrandTotal();
+});
     });
 
     /**
@@ -1157,3 +1162,33 @@
         localStorage.setItem("resizableDivHeight", currentHeight);
       });
     });
+
+
+
+    function calculateFinalGrandTotal() {
+    var subTotal = 0;
+
+    $("input[name^='total[']").each(function() {
+        subTotal += parseFloat($(this).val()) || 0;
+    });
+
+    var discountInput = parseFloat($('#tot_discount_amt').val()) || 0;
+    var discountType = $('#tot_discount_type').val();
+    var totalDiscountAmount = 0;
+
+    if (discountType === 'percentage') {
+        totalDiscountAmount = (subTotal * discountInput) / 100;
+    } else {
+        totalDiscountAmount = discountInput;
+    }
+
+    var roundOff = parseFloat($("input[name='round_off']").val()) || 0;
+    var finalGrandTotal = subTotal - totalDiscountAmount + roundOff;
+
+    $(".grand_total").val(_parseFix(finalGrandTotal));
+    $("#paid_amount").val(_parseFix(finalGrandTotal));
+    
+    if(typeof calculateConvertedAmount === "function"){
+        calculateConvertedAmount(); 
+    }
+}

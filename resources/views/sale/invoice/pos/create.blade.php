@@ -173,7 +173,7 @@
                                                         </select>
                                                 </td>
                                                  <td class="w-50">
-                                                    <x-input type="text" additionalClasses="text-end cu_numeric" name="payment_amount[0]" :required="false" placeholder="Payment Amount" value="0"/>
+                                                    <x-input type="text" additionalClasses="text-end cu_numeric" id="paid_amount" name="payment_amount[0]" :required="false" placeholder="Payment Amount" value="0"/>
                                                     <input type="hidden" name="payment_note[0]" value="">
                                                 </td>
                                               </tr>
@@ -233,18 +233,22 @@
                                                     <x-input type="text" additionalClasses="text-end cu_numeric round_off " name="round_off" :required="false" placeholder="Round-Off" value="0"/>
                                                 </td>
                                               </tr>
-                                            <tr>
-                                                <td><span class="fw-bold">{{ __('app.discount') }}</span></td>
-                                                <td>
-    <div class="input-group">
-        <x-input type="text" additionalClasses="text-end cu_numeric" id="tot_discount_to_all_amt" name="tot_discount_to_all_amt" :required="false" placeholder="0" value="0"/>
-        
-        <button class="btn btn-outline-primary btn_discount_type" type="button" id="discount_type_addon">د.ك</button>
-        
-        <input type="hidden" id="discount_type" name="discount_type" value="fixed">
-    </div>
-</td>
-                                            </tr>
+                                            
+
+
+                                              <tr>
+                                                            <td><span class="fw-bold">Discount</span>
+                                                                <select id="tot_discount_type" name="tot_discount_type" class="form-select form-select-sm d-inline-block w-auto ms-2">
+                                                                    <option value="percentage">%</option>
+                                                                    <option value="fixed">Fixed</option>
+                                                                </select>
+                                                            </td>
+                                                            <td>
+                                                                <input type="text" id="tot_discount_amt" name="tot_discount_amt" class="form-control text-end cu_numeric" value="0">
+                                                            </td>
+                                                        </tr>
+
+                                                        
                                               <tr>
                                                  <td><span class="fw-bold">{{ __('app.grand_total') }}</span></td>
                                                  <td>

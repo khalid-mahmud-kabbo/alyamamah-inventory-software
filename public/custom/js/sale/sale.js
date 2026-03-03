@@ -1083,41 +1083,29 @@
 
 
 
-
-    /**
- * পুরো ইনভয়েসের ডিসকাউন্ট এবং গ্র্যান্ড টোটাল ক্যালকুলেশন
- * */
 function calculateFinalGrandTotal() {
     var subTotal = 0;
 
-    // ১. প্রতিটি রো-এর টোটাল যোগ করে সাব-টোটাল বের করা
-    // আপনার টেবিলে প্রতিটি রো-এর টোটাল ইনপুটের নাম 'total[rowId]'
     $("input[name^='total[']").each(function() {
         subTotal += parseFloat($(this).val()) || 0;
     });
 
-    // ২. ডিসকাউন্ট ইনপুট নেয়া
     var discountInput = parseFloat($('#tot_discount_amt').val()) || 0;
     var discountType = $('#tot_discount_type').val();
     var totalDiscountAmount = 0;
 
-    // ৩. ডিসকাউন্ট টাইপ অনুযায়ী ক্যালকুলেশন
     if (discountType === 'percentage') {
         totalDiscountAmount = (subTotal * discountInput) / 100;
     } else {
         totalDiscountAmount = discountInput;
     }
 
-    // ৪. রাউন্ড অফ ভ্যালু নেয়া
     var roundOff = parseFloat($("input[name='round_off']").val()) || 0;
-
-    // ৫. ফাইনাল গ্র্যান্ড টোটাল
     var finalGrandTotal = subTotal - totalDiscountAmount + roundOff;
 
-    // ৬. ভ্যালু সেট করা (আপনার ফাইলে _parseFix ফাংশন থাকলে সেটি ব্যবহার করুন)
     $(".grand_total").val(_parseFix(finalGrandTotal));
+    $("#paid_amount").val(_parseFix(finalGrandTotal));
     
-    // যদি সেকেন্ডারি কারেন্সি থাকে তবে সেটি আপডেট করা
     if(typeof calculateConvertedAmount === "function"){
         calculateConvertedAmount(); 
     }
