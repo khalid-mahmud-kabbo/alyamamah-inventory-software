@@ -456,31 +456,66 @@ function initSelect2BrandList() {
 
 
 
+// function initSelect2ItemCategoryList() {
+//     $('.item-category-ajax').select2({
+//         theme: 'bootstrap-5',
+//         allowClear: true,
+//         ajax: {
+//             url: '/item/category/select2/ajax/get-list',
+//             dataType: 'json',
+//             delay: 250,
+//             data: function (params) {
+//                 return {
+//                     search: params.term
+//                 };
+//             },
+//             processResults: function (data) {
+//                 return {
+//                     results: data.results
+//                 };
+//             }
+//         }
+//     });
+// }
+
+
+
 function initSelect2ItemCategoryList() {
-    $('.item-category-ajax').select2({
-        theme: 'bootstrap-5',
-        allowClear: true,
-        ajax: {
-            url: '/item/category/select2/ajax/get-list',
-            dataType: 'json',
-            delay: 250,
-            data: function (params) {
-                return {
-                    search: params.term
-                };
-            },
-            processResults: function (data) {
-                return {
-                    results: data.results
-                };
-            }
+    // 1. Target by Class only
+    var target = $('.item-category-ajax');
+    
+    if (target.length === 0) return;
+
+    target.each(function() {
+        var $this = $(this);
+        
+        // 2. Destroy any existing Select2 instance to prevent "Conflict"
+        if ($this.data('select2')) {
+            $this.select2('destroy');
         }
+
+        // 3. Initialize fresh
+        $this.select2({
+            theme: 'bootstrap-5',
+            allowClear: true,
+            width: '100%',
+            placeholder: "Choose Category",
+            // This prevents the Modal from blocking the Search Box
+            dropdownParent: $this.closest('.modal').length ? $this.closest('.modal') : $(document.body),
+            ajax: {
+                url: ($('#base_url').val() || '') + '/item/category/select2/ajax/get-list',
+                dataType: 'json',
+                delay: 250,
+                data: function (params) {
+                    return { search: params.term };
+                },
+                processResults: function (data) {
+                    return { results: data.results };
+                }
+            }
+        });
     });
 }
-
-
-
-
 
 
 

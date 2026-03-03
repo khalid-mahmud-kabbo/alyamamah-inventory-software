@@ -68,8 +68,9 @@
                                 </div>
                                 <div class="row">
                                     <div class="col-md-6 mb-3">
-                                        <x-dropdown-item-category selected="" :isMultiple="false" :showSelectOptionAll="true" />
+                                        <x-dropdown-item-category selected="" :showSelectOptionAll="true" id="item_category_id" />
                                     </div>
+
                                     <div class="col-md-6 mb-3">
                                         <x-dropdown-brand selected="" :showSelectOptionAll='true' name="item_brand_id"/>
                                     </div>
@@ -302,18 +303,6 @@
         @endsection
 
 @section('js')
-
-<script>
-    $(document).on('click', '.btn_discount_type', function() {
-    let currentType = $('#discount_type').val();
-    let newType = (currentType === 'fixed') ? 'percentage' : 'fixed';
-    let newSymbol = (newType === 'fixed') ? 'د.ك' : '%';
-
-    // Update hidden input and button text
-    $('#discount_type').val(newType);
-    $(this).text(newSymbol);
-});
-</script>
 <script src="{{ versionedAsset('custom/js/common/common.js') }}"></script>
 <script src="{{ versionedAsset('custom/js/autocomplete-item.js') }}"></script>
 <script src="{{ versionedAsset('custom/js/sale/pos.js') }}"></script>

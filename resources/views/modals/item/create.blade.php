@@ -53,10 +53,10 @@
                             <x-label for="brand_id" name="{{ __('item.brand.brand') }}" />
                             <x-dropdown-brand selected="" :showSelectOptionAll=true />
                         </div>
-                        <div class="col-md-6">
+                        {{-- <div class="col-md-6">
                             <x-label for="item_category_id" name="{{ __('item.category.category') }}" />
-                            <x-dropdown-item-category selected="" :isMultiple=false />
-                        </div>
+                            <x-dropdown-item-category id="modal_category_id" selected="" :isMultiple=false />
+                        </div> --}}
                         <div class="col-md-6">
                             <x-label for="description" name="{{ __('app.description') }}" />
                             <x-textarea name="description" value=""/>
