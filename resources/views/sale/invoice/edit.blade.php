@@ -199,6 +199,18 @@
                                                             </td>
                                                         </tr>
 
+                                                         <tr>
+                                                            <td><span class="fw-bold">Vat/Tax</span>
+                                                                <select id="tot_tax_type" name="tot_tax_type" class="form-select form-select-sm d-inline-block w-auto ms-2">
+                                                                    <option value="percentage">%</option>
+                                                                    <option value="fixed">د.ك</option>
+                                                                </select>
+                                                            </td>
+                                                            <td>
+                                                                <input type="text" id="tot_tax_amt" name="tot_tax_amt" class="form-control text-end cu_numeric" value="0">
+                                                            </td>
+                                                        </tr>
+
                                                         
                                                       <tr>
                                                          <td><span class="fw-bold">{{ __('app.grand_total') }}</span></td>
