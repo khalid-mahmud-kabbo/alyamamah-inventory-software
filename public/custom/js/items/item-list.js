@@ -58,7 +58,24 @@ $(function() {
                 {data: 'category_name', name: 'category_name', orderable: false,},
                 {data: 'sale_price', name: 'sale_price', className: 'text-end'},
                 {data: 'mrp', name: 'mrp', className: 'text-end'},
-                {data: 'purchase_price', name: 'purchase_price', className: 'text-end'},
+                {
+    data: 'purchase_price',
+    name: 'purchase_price',
+    className: 'text-end',
+    render: function(data, type, row, meta) {
+        // Unique ID for each row
+        const id = 'purchase_' + meta.row;
+
+        return `
+            <div>
+                <span id="${id}" style="display:none;">${data}  </span>
+                <button type="button" class="btn btn-sm btn-primary toggle-btn" data-target="${id}">
+                    Show
+                </button>
+            </div>
+        `;
+    }
+},
                 {data: 'current_stock', name: 'current_stock', className: 'text-left'},
                 {data: 'tracking_type', name: 'tracking_type'},
                 {data: 'username', name: 'username', orderable: false,},
@@ -298,4 +315,20 @@ $(function() {
         loadDatatables();
     });
 
+});
+
+
+
+// Handle show/hide toggle for purchase_price
+$(document).on('click', '.toggle-btn', function() {
+    const targetId = $(this).data('target');
+    const span = $('#' + targetId);
+
+    if (span.is(':visible')) {
+        span.hide();
+        $(this).text('Show');
+    } else {
+        span.show();
+        $(this).text('Hide');
+    }
 });

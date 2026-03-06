@@ -50,7 +50,7 @@
 							
                             <div class="col-md-4">
                                 <x-label for="item_category_id" name="{{ __('item.category.category') }}" />
-                                <x-dropdown-item-category selected="" :isMultiple='false' />
+                                <x-dropdown-item-category selected="" :showSelectOptionAll='true' />
 							</div>
 
 

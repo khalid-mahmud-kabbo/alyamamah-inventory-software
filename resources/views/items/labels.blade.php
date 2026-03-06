@@ -27,7 +27,6 @@
             box-sizing: border-box;
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
             padding: 2mm;
         }
         .company-name {
@@ -46,7 +45,6 @@
         }
         .main-barcode-container {
             text-align: center;
-            margin-top: auto;
         }
         .barcode-number {
             text-align: center;

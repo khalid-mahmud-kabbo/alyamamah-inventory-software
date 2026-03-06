@@ -1,21 +1,27 @@
 async function autoTranslateInvoice() {
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
         acceptNode: (node) => {
-            if (node.textContent.trim().length < 2) return NodeFilter.FILTER_REJECT;
+            const text = node.textContent.trim();
+            if (text.length < 2) return NodeFilter.FILTER_REJECT; // skip empty or 1-char
             const parent = node.parentElement.tagName;
             if (['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEXTAREA', 'TITLE'].includes(parent)) return NodeFilter.FILTER_REJECT;
+
+            // Skip if the text is only a number (integer or decimal)
+            if (/^\d+(\.\d+)?$/.test(text)) return NodeFilter.FILTER_REJECT;
+
             return NodeFilter.FILTER_ACCEPT;
         }
     });
 
     const textNodes = [];
     let n;
-    while(n = walker.nextNode()) textNodes.push(n);
+    while (n = walker.nextNode()) textNodes.push(n);
 
     if (textNodes.length === 0) {
         if (typeof PrintNow === "function") PrintNow();
         return;
     }
+
     const separator = " ||| ";
     const batches = [];
     let currentBatch = [];
@@ -62,4 +68,5 @@ async function autoTranslateInvoice() {
         }
     }
 }
+
 window.addEventListener('load', autoTranslateInvoice);

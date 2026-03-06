@@ -962,23 +962,25 @@ class SaleController extends Controller
 
 
 
+
+
     public function saveSaleItems($request)
 {
     $itemsCount = $request->row_count;
     $isWholesaleCustomer = $request->only('is_wholesale_customer')['is_wholesale_customer'];
 
-    // 1. Get Global Invoice Data
+    // --- GLOBAL INVOICE DATA ---
     $totalInvoiceDiscount = $request->tot_discount_amt ?? 0;
-    
-    // Use the sum of row totals as the base for distribution
-    // We filter the array to ensure we only sum valid item rows
+    $invoiceTax = $request->tot_tax_amt ?? 0;
+    $invoiceTaxType = $request->tot_tax_type ?? 'fixed'; // 'percentage' or 'fixed'
+
+    // Calculate subtotal for global discount distribution
     $subTotal = 0;
-    foreach($request->item_id as $key => $val) {
+    foreach ($request->item_id as $key => $val) {
         $subTotal += $request->total[$key] ?? 0;
     }
 
     for ($i = 0; $i < $itemsCount; $i++) {
-        // Skip if row is empty
         if (!isset($request->item_id[$i])) {
             continue;
         }
@@ -986,7 +988,6 @@ class SaleController extends Controller
         $itemDetails = Item::find($request->item_id[$i]);
         $itemName = $itemDetails->name;
 
-        // Validation: Quantity
         $itemQuantity = $request->quantity[$i];
         if (empty($itemQuantity) || $itemQuantity <= 0) {
             return [
@@ -997,43 +998,51 @@ class SaleController extends Controller
             ];
         }
 
-        // Validation: Stock & Price Limits
+        // Validate Stock & Price
         $this->itemTransactionService->validateRegularItemQuantity($itemDetails, $request->warehouse_id[$i], $itemQuantity, ItemTransactionUniqueCode::SALE->value);
         $this->restrictToSellAboveMRP($itemDetails, $request, $i);
         $this->restrictToSellBelowMSP($itemDetails, $request, $i);
-
-        // Update Master Price
         $this->updateItemMasterSalePrice($request, $isWholesaleCustomer, $i);
 
-        // --- DISCOUNT CALCULATION LOGIC ---
-        
-        // A. Calculate Product-Wise Discount (Convert % to Amount if needed)
+        // --- ROW DISCOUNT ---
         $discountInput = $request->discount[$i] ?? 0;
-        $discountType = $request->discount_type[$i]; // 'percentage' or 'fixed'
-        $productWiseDiscountAmount = 0;
+        $discountType = $request->discount_type[$i];
+        $rowGrossTotal = $request->sale_price[$i] * $itemQuantity;
 
-        if ($discountType == 'percentage') {
-            // Formula: (Price * Qty) * (Percentage / 100)
-            $rowGrossTotal = $request->sale_price[$i] * $itemQuantity;
-            $productWiseDiscountAmount = ($rowGrossTotal * $discountInput) / 100;
-        } else {
-            $productWiseDiscountAmount = $discountInput;
-        }
+        $productWiseDiscountAmount = ($discountType == 'percentage') 
+            ? ($rowGrossTotal * $discountInput) / 100 
+            : $discountInput;
 
-        // B. Calculate Distributed Global Discount
+        // --- DISTRIBUTED GLOBAL DISCOUNT ---
         $distributedGlobalDiscount = 0;
         if ($totalInvoiceDiscount > 0 && $subTotal > 0) {
             $rowWeight = $request->total[$i] / $subTotal;
             $distributedGlobalDiscount = $rowWeight * $totalInvoiceDiscount;
         }
 
-        // C. Final Discount Amount for DB (Sum of both converted to raw amount)
-        $finalDiscountToSave = $productWiseDiscountAmount + $distributedGlobalDiscount;
+        $finalDiscountAmount = $productWiseDiscountAmount + $distributedGlobalDiscount;
+
+        // --- TAX CALCULATION ---
+        $rowTaxAmount = $request->tax_amount[$i] ?? 0;
+        $rowTaxType = $request->tax_type[$i] ?? 'exclusive';
         $finalRowTotal = $request->total[$i] - $distributedGlobalDiscount;
 
-        /**
-         * Item Transaction Entry
-         */
+        // If row tax is exclusive, add it to the row total
+        if ($rowTaxType == 'exclusive') {
+            $finalRowTotal += $rowTaxAmount;
+        }
+
+        // --- ADD INVOICE-LEVEL TAX (percentage/fixed) ---
+        $rowInvoiceTax = 0;
+        if ($invoiceTaxType == 'percentage') {
+            $rowInvoiceTax = (($finalRowTotal - $finalDiscountAmount) * $invoiceTax) / 100;
+        } else {
+            $rowInvoiceTax = $invoiceTax * ($request->total[$i] / $subTotal); // proportionally distribute fixed invoice tax
+        }
+
+        $finalRowTotal += $rowInvoiceTax;
+
+        // --- SAVE TRANSACTION ---
         $transaction = $this->itemTransactionService->recordItemTransactionEntry($request->modelName, [
             'warehouse_id'     => $request->warehouse_id[$i],
             'transaction_date' => $request->sale_date,
@@ -1045,13 +1054,13 @@ class SaleController extends Controller
             'unit_price'       => $request->sale_price[$i],
             'mrp'              => $request->mrp[$i] ?? 0,
             
-            'discount'         => $request->discount[$i],      // Keep original input (% or value)
-            'discount_type'    => $request->discount_type[$i], 
-            'discount_amount'  => $finalDiscountToSave,        // Save calculated money value
+            'discount'         => $request->discount[$i],
+            'discount_type'    => $request->discount_type[$i],
+            'discount_amount'  => $finalDiscountAmount,
             
-            'tax_id'           => $request->tax_id[$i],
-            'tax_type'         => $request->tax_type[$i],
-            'tax_amount'       => $request->tax_amount[$i],
+            'tax_id'           => $request->tax_id[$i] ?? null,
+            'tax_type'         => $rowTaxType,
+            'tax_amount'       => $rowTaxAmount + $rowInvoiceTax,
             'total'            => $finalRowTotal,
         ]);
 
@@ -1059,7 +1068,7 @@ class SaleController extends Controller
             throw new \Exception("Failed to record Item Transaction Entry!");
         }
 
-        // --- TRACKING (Serial/Batch) ---
+        // --- SERIAL / BATCH TRACKING ---
         if ($itemDetails->tracking_type == 'serial') {
             $jsonSerialsDecode = json_decode($request->serial_numbers[$i]);
             if (count($jsonSerialsDecode ?? []) != $itemQuantity) {
@@ -1085,6 +1094,135 @@ class SaleController extends Controller
 
     return ['status' => true];
 }
+
+
+
+//     public function saveSaleItems($request)
+// {
+//     $itemsCount = $request->row_count;
+//     $isWholesaleCustomer = $request->only('is_wholesale_customer')['is_wholesale_customer'];
+
+//     // 1. Get Global Invoice Data
+//     $totalInvoiceDiscount = $request->tot_discount_amt ?? 0;
+
+//     $invoiceTax = $request->tot_tax_amt ?? 0;
+//     $invoiceTaxType = $request->tot_tax_type ?? 'fixed';
+    
+//     // Use the sum of row totals as the base for distribution
+//     // We filter the array to ensure we only sum valid item rows
+//     $subTotal = 0;
+//     foreach($request->item_id as $key => $val) {
+//         $subTotal += $request->total[$key] ?? 0;
+//     }
+
+//     for ($i = 0; $i < $itemsCount; $i++) {
+//         // Skip if row is empty
+//         if (!isset($request->item_id[$i])) {
+//             continue;
+//         }
+
+//         $itemDetails = Item::find($request->item_id[$i]);
+//         $itemName = $itemDetails->name;
+
+//         // Validation: Quantity
+//         $itemQuantity = $request->quantity[$i];
+//         if (empty($itemQuantity) || $itemQuantity <= 0) {
+//             return [
+//                 'status' => false,
+//                 'message' => ($itemQuantity < 0) 
+//                     ? __('item.item_qty_negative', ['item_name' => $itemName]) 
+//                     : __('item.please_enter_item_quantity', ['item_name' => $itemName]),
+//             ];
+//         }
+
+//         // Validation: Stock & Price Limits
+//         $this->itemTransactionService->validateRegularItemQuantity($itemDetails, $request->warehouse_id[$i], $itemQuantity, ItemTransactionUniqueCode::SALE->value);
+//         $this->restrictToSellAboveMRP($itemDetails, $request, $i);
+//         $this->restrictToSellBelowMSP($itemDetails, $request, $i);
+
+//         // Update Master Price
+//         $this->updateItemMasterSalePrice($request, $isWholesaleCustomer, $i);
+
+//         // --- DISCOUNT CALCULATION LOGIC ---
+        
+//         // A. Calculate Product-Wise Discount (Convert % to Amount if needed)
+//         $discountInput = $request->discount[$i] ?? 0;
+//         $discountType = $request->discount_type[$i]; // 'percentage' or 'fixed'
+//         $productWiseDiscountAmount = 0;
+
+//         if ($discountType == 'percentage') {
+//             // Formula: (Price * Qty) * (Percentage / 100)
+//             $rowGrossTotal = $request->sale_price[$i] * $itemQuantity;
+//             $productWiseDiscountAmount = ($rowGrossTotal * $discountInput) / 100;
+//         } else {
+//             $productWiseDiscountAmount = $discountInput;
+//         }
+
+//         // B. Calculate Distributed Global Discount
+//         $distributedGlobalDiscount = 0;
+//         if ($totalInvoiceDiscount > 0 && $subTotal > 0) {
+//             $rowWeight = $request->total[$i] / $subTotal;
+//             $distributedGlobalDiscount = $rowWeight * $totalInvoiceDiscount;
+//         }
+
+//         // C. Final Discount Amount for DB (Sum of both converted to raw amount)
+//         $finalDiscountToSave = $productWiseDiscountAmount + $distributedGlobalDiscount;
+//         $finalRowTotal = $request->total[$i] - $distributedGlobalDiscount;
+
+//         /**
+//          * Item Transaction Entry
+//          */
+//         $transaction = $this->itemTransactionService->recordItemTransactionEntry($request->modelName, [
+//             'warehouse_id'     => $request->warehouse_id[$i],
+//             'transaction_date' => $request->sale_date,
+//             'item_id'          => $request->item_id[$i],
+//             'description'      => $request->description[$i],
+//             'tracking_type'    => $itemDetails->tracking_type,
+//             'quantity'         => $itemQuantity,
+//             'unit_id'          => $request->unit_id[$i],
+//             'unit_price'       => $request->sale_price[$i],
+//             'mrp'              => $request->mrp[$i] ?? 0,
+            
+//             'discount'         => $request->discount[$i],      // Keep original input (% or value)
+//             'discount_type'    => $request->discount_type[$i], 
+//             'discount_amount'  => $finalDiscountToSave,        // Save calculated money value
+            
+//             'tax_id'           => $request->tax_id[$i],
+//             'tax_type'         => $request->tax_type[$i],
+//             'tax_amount'       => $request->tax_amount[$i],
+//             'total'            => $finalRowTotal,
+//         ]);
+
+//         if (!$transaction) {
+//             throw new \Exception("Failed to record Item Transaction Entry!");
+//         }
+
+//         // --- TRACKING (Serial/Batch) ---
+//         if ($itemDetails->tracking_type == 'serial') {
+//             $jsonSerialsDecode = json_decode($request->serial_numbers[$i]);
+//             if (count($jsonSerialsDecode ?? []) != $itemQuantity) {
+//                 throw new \Exception(__('item.opening_quantity_not_matched_with_serial_records'));
+//             }
+//             foreach ($jsonSerialsDecode as $serialNumber) {
+//                 $this->itemTransactionService->recordItemSerials($transaction->id, ['serial_code' => $serialNumber], $request->item_id[$i], $request->warehouse_id[$i], ItemTransactionUniqueCode::SALE->value);
+//             }
+//         } else if ($itemDetails->tracking_type == 'batch') {
+//             $batchArray = [
+//                 'batch_no' => $request->batch_no[$i],
+//                 'mfg_date' => $request->mfg_date[$i] ? $this->toSystemDateFormat($request->mfg_date[$i]) : null,
+//                 'exp_date' => $request->exp_date[$i] ? $this->toSystemDateFormat($request->exp_date[$i]) : null,
+//                 'model_no' => $request->model_no[$i],
+//                 'mrp'      => $request->mrp[$i] ?? 0,
+//                 'color'    => $request->color[$i],
+//                 'size'     => $request->size[$i],
+//                 'quantity' => $itemQuantity,
+//             ];
+//             $this->itemTransactionService->recordItemBatches($transaction->id, $batchArray, $request->item_id[$i], $request->warehouse_id[$i], ItemTransactionUniqueCode::SALE->value);
+//         }
+//     }
+
+//     return ['status' => true];
+// }
 
 
     /**

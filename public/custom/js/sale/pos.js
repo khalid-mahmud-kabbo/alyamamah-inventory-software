@@ -897,6 +897,10 @@
         $(document).on('keyup change', '#tot_discount_amt, #tot_discount_type, input[name="round_off"]', function() {
     calculateFinalGrandTotal();
 });
+
+        $(document).on('keyup change', '#tot_tax_amt, #tot_tax_type, input[name="round_off"]', function() {
+    calculateFinalGrandTotal();
+});
     });
 
     /**
@@ -1165,13 +1169,33 @@
 
 
 
-    function calculateFinalGrandTotal() {
-    var subTotal = 0;
 
+
+
+
+
+
+function calculateFinalGrandTotal() { 
+    var subTotal = 0;
+    var totalRowTax = 0;
+
+    // Sum up all row totals and their exclusive taxes
     $("input[name^='total[']").each(function() {
-        subTotal += parseFloat($(this).val()) || 0;
+        var rowId = $(this).attr('name').match(/\d+/)[0]; // get the row index
+        var rowTotal = parseFloat($(this).val()) || 0;
+
+        // Check row-level tax
+        var taxType = $('input[name="tax_type[' + rowId + ']"]').val();
+        var taxAmount = returnDecimalValueByName('tax_amount[' + rowId + ']') || 0;
+
+        if(taxType === 'exclusive'){
+            totalRowTax += taxAmount; // add exclusive tax separately
+        }
+
+        subTotal += rowTotal; // rowTotal already includes price minus discount (plus tax if inclusive)
     });
 
+    // Invoice-level discount
     var discountInput = parseFloat($('#tot_discount_amt').val()) || 0;
     var discountType = $('#tot_discount_type').val();
     var totalDiscountAmount = 0;
@@ -1182,9 +1206,24 @@
         totalDiscountAmount = discountInput;
     }
 
-    var roundOff = parseFloat($("input[name='round_off']").val()) || 0;
-    var finalGrandTotal = subTotal - totalDiscountAmount + roundOff;
+    // Invoice-level tax
+    var invoiceTax = parseFloat($('#tot_tax_amt').val()) || 0;
+    var invoiceTaxType = $('#tot_tax_type').val();
+    var totalInvoiceTax = 0;
 
+    if(invoiceTaxType === 'percentage'){
+        totalInvoiceTax = ((subTotal - totalDiscountAmount) * invoiceTax) / 100;
+    } else {
+        totalInvoiceTax = invoiceTax;
+    }
+
+    // Round-off
+    var roundOff = parseFloat($("input[name='round_off']").val()) || 0;
+
+    // Final Grand Total
+    var finalGrandTotal = subTotal - totalDiscountAmount + totalRowTax + totalInvoiceTax + roundOff;
+
+    // Update fields
     $(".grand_total").val(_parseFix(finalGrandTotal));
     $("#paid_amount").val(_parseFix(finalGrandTotal));
     
