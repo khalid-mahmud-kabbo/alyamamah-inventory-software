@@ -450,6 +450,11 @@ class ItemController extends Controller
                         ->when($request->item_category_id, function ($query) use ($request) {
                             return $query->where('item_category_id', $request->item_category_id);
                         })
+                        ->when($request->warehouse_id, function ($query) use ($request) {
+                        return $query->whereHas('itemGeneralQuantities', function ($q) use ($request) {
+                            $q->where('warehouse_id', $request->warehouse_id);
+                            });
+                        })
                         ->when($request->brand_id, function ($query) use ($request) {
                             return $query->where('brand_id', $request->brand_id);
                         })

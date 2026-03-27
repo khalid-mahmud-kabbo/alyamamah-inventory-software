@@ -57,7 +57,7 @@ $(function() {
                 {data: 'brand_name', name: 'brand_name', orderable: false,},
                 {data: 'category_name', name: 'category_name', orderable: false,},
                 {data: 'sale_price', name: 'sale_price', className: 'text-end'},
-                {data: 'mrp', name: 'mrp', className: 'text-end'},
+              
                 {
     data: 'purchase_price',
     name: 'purchase_price',

@@ -88,7 +88,7 @@
                                             <th>{{ __('item.brand.brand') }}</th>
                                             <th>{{ __('item.category.category') }}</th>
 											<th>{{ __('item.sale_price') }}</th>
-											<th>{{ __('item.mrp') }}</th>
+					
 											<th>{{ __('item.purchase_price') }}</th>
 											<th>{{ __('item.quantity') }}</th>
 											<th>{{ __('item.tracking_type') }}</th>

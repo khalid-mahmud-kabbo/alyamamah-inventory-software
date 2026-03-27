@@ -632,10 +632,20 @@ public function datatableListLedger(Request $request)
     $cashFlow = (clone $baseQuery)->where(fn($q) => $q->where('payment_type_id', $cashId)->orWhere('transfer_to_payment_type_id', $cashId))
         ->when($partyId || $partyType, $partyFilter)->get()->map(fn($row) => tap($row, fn(&$r) => $r->flow_type = 'cash'));
 
-    $bankFlow = (clone $baseQuery)->where(fn($q) => $q->whereNotIn('payment_type_id', [$cashId, $chequeId])->orWhereNotIn('transfer_to_payment_type_id', [$cashId, $chequeId]))
-        ->when($partyId || $partyType, $partyFilter)->get()->map(fn($row) => tap($row, fn(&$r) => $r->flow_type = 'bank'));
 
-    // --- 2. FETCH PARTY OPENING DATAS ---
+
+
+
+    // $bankFlow = (clone $baseQuery)->where(fn($q) => $q->whereNotIn('payment_type_id', [$cashId, $chequeId])->orWhereNotIn('transfer_to_payment_type_id', [$cashId, $chequeId]))
+    //     ->when($partyId || $partyType, $partyFilter)->get()->map(fn($row) => tap($row, fn(&$r) => $r->flow_type = 'bank'));
+
+
+$bankFlow = (clone $baseQuery)->where(function($q) use ($cashId) {$q->where('payment_type_id', '!=', $cashId)->orWhere('transfer_to_payment_type_id', '!=', $cashId);})->when($partyId || $partyType, $partyFilter)->get()->map(fn($row) => tap($row, fn(&$r) => $r->flow_type = 'bank'));
+
+
+
+
+
     $openingTransactions = PartyTransaction::with('party')
         ->where('transaction_type', 'Party Opening')
         ->when($partyId, fn($q) => $q->where('party_id', $partyId))
